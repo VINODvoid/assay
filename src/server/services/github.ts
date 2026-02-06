@@ -1,7 +1,10 @@
 import { Octokit } from "@octokit/rest";
 import type { GitHubIssue } from "@/lib/types";
+import { env } from "@/lib/env";
 
-const octokit = new Octokit();
+const octokit = new Octokit({
+  auth: env.githubToken,
+});
 
 export async function fetchRepoIssues(
   owner: string,
@@ -81,5 +84,83 @@ export async function validateRepo(owner: string, repo: string): Promise<boolean
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function fetchRepoPullRequests(
+  owner: string,
+  repo: string,
+  maxPRs: number = 20
+) {
+  try {
+    const response = await octokit.pulls.list({
+      owner,
+      repo,
+      state: "all",
+      per_page: maxPRs,
+      sort: "updated",
+      direction: "desc",
+    });
+
+    return response.data.map((pr) => ({
+      number: pr.number,
+      title: pr.title,
+      body: pr.body ?? null,
+      state: pr.state,
+      html_url: pr.html_url,
+      created_at: pr.created_at,
+      updated_at: pr.updated_at,
+      merged_at: pr.merged_at,
+      user: pr.user?.login ?? null,
+      labels: pr.labels
+        .map((label) => (typeof label === "string" ? label : label.name))
+        .filter((name): name is string => !!name),
+    }));
+  } catch (error) {
+    console.error("Failed to fetch PRs:", error);
+    return [];
+  }
+}
+
+export async function fetchRepoReadme(owner: string, repo: string) {
+  try {
+    const response = await octokit.repos.getReadme({
+      owner,
+      repo,
+    });
+
+    // Decode base64 content
+    const content = Buffer.from(response.data.content, "base64").toString("utf-8");
+    return content;
+  } catch (error) {
+    console.error("Failed to fetch README:", error);
+    return null;
+  }
+}
+
+export async function fetchRepoMetadata(owner: string, repo: string) {
+  try {
+    const response = await octokit.repos.get({
+      owner,
+      repo,
+    });
+
+    return {
+      name: response.data.name,
+      fullName: response.data.full_name,
+      description: response.data.description ?? null,
+      language: response.data.language ?? null,
+      stargazers: response.data.stargazers_count,
+      forks: response.data.forks_count,
+      openIssues: response.data.open_issues_count,
+      topics: response.data.topics ?? [],
+      homepage: response.data.homepage ?? null,
+      license: response.data.license?.name ?? null,
+      createdAt: response.data.created_at,
+      updatedAt: response.data.updated_at,
+    };
+  } catch (error) {
+    console.error("Failed to fetch repo metadata:", error);
+    return null;
   }
 }

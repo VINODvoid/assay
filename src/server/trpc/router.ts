@@ -12,6 +12,8 @@ import {
 } from "@/server/store";
 import { fetchRepoIssues } from "@/server/services/github";
 import { analyzeIssuesBatch } from "@/server/services/ai-analyzer";
+import { chatWithRepository, getSuggestedQuestions } from "@/server/services/repo-chat";
+import { getProviderApiKey } from "@/lib/env";
 import type { AnalyzedIssue, AIProvider } from "@/lib/types";
 
 const t = initTRPC.context<Context>().create();
@@ -25,7 +27,7 @@ export const appRouter = router({
       z.object({
         repoUrl: z.string().min(1, "Repository URL is required"),
         provider: AIProviderSchema,
-        apiKey: z.string().min(1, "API key is required"),
+        apiKey: z.string().optional(),
         maxIssues: z.number().min(1).max(100).default(20),
       })
     )
@@ -35,10 +37,16 @@ export const appRouter = router({
         throw new Error("Invalid GitHub repository URL");
       }
 
+      // Use provided API key or fall back to env variable
+      const apiKey = input.apiKey || getProviderApiKey(input.provider);
+      if (!apiKey) {
+        throw new Error(`API key required for ${input.provider}. Please provide one or set it in .env`);
+      }
+
       const { owner, repo } = parsed;
       const analysisId = generateAnalysisId();
 
-      createAnalysis(analysisId, input.repoUrl, owner, repo);
+      createAnalysis(analysisId, input.repoUrl, owner, repo, input.provider);
 
       // Process in background (non-blocking)
       processAnalysis(
@@ -46,7 +54,7 @@ export const appRouter = router({
         owner,
         repo,
         input.provider,
-        input.apiKey,
+        apiKey,
         input.maxIssues
       );
 
@@ -65,6 +73,7 @@ export const appRouter = router({
         id: analysis.id,
         status: analysis.status,
         progress: analysis.progress,
+        provider: analysis.provider,
         error: analysis.error,
       };
     }),
@@ -106,8 +115,69 @@ export const appRouter = router({
         owner: analysis.owner,
         repo: analysis.repo,
         status: analysis.status,
+        provider: analysis.provider,
         issues,
         counts,
+      };
+    }),
+
+  chat: publicProcedure
+    .input(
+      z.object({
+        analysisId: z.string(),
+        message: z.string().min(1),
+        provider: AIProviderSchema,
+        apiKey: z.string().optional(),
+        history: z
+          .array(
+            z.object({
+              role: z.enum(["user", "assistant"]),
+              content: z.string(),
+            })
+          )
+          .optional()
+          .default([]),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const analysis = getAnalysis(input.analysisId);
+      if (!analysis) {
+        throw new Error("Analysis not found");
+      }
+
+      if (analysis.status !== "complete") {
+        throw new Error("Analysis must be complete before chatting");
+      }
+
+      // Use provided API key or fall back to env variable
+      const apiKey = input.apiKey || getProviderApiKey(input.provider);
+      if (!apiKey) {
+        throw new Error(`API key required for ${input.provider}. Please provide one or set it in .env`);
+      }
+
+      const result = await chatWithRepository(
+        input.message,
+        analysis.owner,
+        analysis.repo,
+        analysis.issues,
+        input.provider,
+        apiKey,
+        input.history
+      );
+
+      return result;
+    }),
+
+  getSuggestedQuestions: publicProcedure
+    .input(z.object({ analysisId: z.string() }))
+    .query(({ input }) => {
+      const analysis = getAnalysis(input.analysisId);
+      if (!analysis) {
+        throw new Error("Analysis not found");
+      }
+
+      return {
+        questions: getSuggestedQuestions(analysis.issues),
       };
     }),
 });
@@ -144,6 +214,8 @@ async function processAnalysis(
             ...issue,
             complexity: analysis?.complexity ?? "intermediate",
             reasoning: analysis?.reasoning ?? "Unable to analyze",
+            technologies: analysis?.technologies,
+            estimatedHours: analysis?.estimatedHours,
           });
         }
       } catch (error) {
@@ -157,6 +229,8 @@ async function processAnalysis(
               error instanceof Error
                 ? `Analysis failed: ${error.message}`
                 : "Analysis failed",
+            technologies: undefined,
+            estimatedHours: undefined,
           });
         }
       }

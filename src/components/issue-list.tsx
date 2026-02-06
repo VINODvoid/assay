@@ -4,6 +4,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { IssueCard } from "@/components/issue-card";
 import { ComplexityFilter } from "@/components/complexity-filter";
+import { RepoChat } from "@/components/repo-chat";
 import { AlertCircle, Inbox, ExternalLink } from "lucide-react";
 import type { ComplexityLevel } from "@/lib/types";
 
@@ -111,11 +112,14 @@ export function IssueList({ analysisId }: IssueListProps) {
               className="reveal"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <IssueCard issue={issue} />
+              <IssueCard issue={issue} repoOwner={data.owner} repoName={data.repo} />
             </div>
           ))}
         </div>
       )}
+
+      {/* Chat Assistant */}
+      <RepoChat analysisId={analysisId} defaultProvider={data?.provider} />
     </div>
   );
 }

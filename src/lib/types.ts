@@ -23,6 +23,8 @@ export interface GitHubIssue {
 export interface AnalyzedIssue extends GitHubIssue {
   complexity: ComplexityLevel;
   reasoning: string;
+  technologies?: string[];
+  estimatedHours?: number;
 }
 
 export interface AnalysisResult {
@@ -36,6 +38,7 @@ export interface AnalysisResult {
     total: number;
   };
   issues: AnalyzedIssue[];
+  provider?: AIProvider;
   error?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -44,6 +47,8 @@ export interface AnalysisResult {
 export const ComplexityAnalysisSchema = z.object({
   complexity: ComplexityLevelSchema,
   reasoning: z.string(),
+  technologies: z.array(z.string()).optional(),
+  estimatedHours: z.number().optional(),
 });
 export type ComplexityAnalysis = z.infer<typeof ComplexityAnalysisSchema>;
 

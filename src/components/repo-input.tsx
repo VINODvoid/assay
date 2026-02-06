@@ -47,15 +47,10 @@ export function RepoInput() {
       return;
     }
 
-    if (!apiKey.trim()) {
-      setError("Please enter your API key");
-      return;
-    }
-
     startAnalysis.mutate({
       repoUrl: repoUrl.trim(),
       provider,
-      apiKey: apiKey.trim(),
+      apiKey: apiKey.trim() || undefined,
       maxIssues,
     });
   };
@@ -146,7 +141,7 @@ export function RepoInput() {
             htmlFor="api-key"
             className="mb-2 block text-[13px] font-medium text-muted-foreground"
           >
-            API Key
+            API Key <span className="text-muted-foreground/50">(optional if set in .env)</span>
             {selectedProvider?.free && (
               <a
                 href="https://console.groq.com"
@@ -181,7 +176,7 @@ export function RepoInput() {
             </button>
           </div>
           <p className="mt-1.5 text-[11px] text-muted-foreground/40">
-            Sent directly to provider · Never stored
+            Sent directly to provider · Never stored · Uses .env key if empty
           </p>
         </div>
 

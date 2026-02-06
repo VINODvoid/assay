@@ -1,4 +1,4 @@
-import type { AnalysisResult, AnalyzedIssue, AnalysisStatus } from "@/lib/types";
+import type { AnalysisResult, AnalyzedIssue, AnalysisStatus, AIProvider } from "@/lib/types";
 
 const analysisStore = new Map<string, AnalysisResult>();
 
@@ -6,7 +6,8 @@ export function createAnalysis(
   id: string,
   repoUrl: string,
   owner: string,
-  repo: string
+  repo: string,
+  provider?: AIProvider
 ): AnalysisResult {
   const analysis: AnalysisResult = {
     id,
@@ -16,6 +17,7 @@ export function createAnalysis(
     status: "pending",
     progress: { current: 0, total: 0 },
     issues: [],
+    provider,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

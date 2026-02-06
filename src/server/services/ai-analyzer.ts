@@ -17,6 +17,8 @@ const BatchComplexityResponseSchema = z.object({
       issueNumber: z.number(),
       complexity: z.enum(["beginner", "intermediate", "advanced"]),
       reasoning: z.string(),
+      technologies: z.array(z.string()).optional(),
+      estimatedHours: z.number().optional(),
     })
   ),
 });
@@ -67,9 +69,12 @@ Rate each issue as:
 - INTERMEDIATE: Requires codebase understanding, moderate complexity
 - ADVANCED: Complex changes, deep expertise needed, architectural impact
 
-For each issue, provide a brief reasoning (1-2 sentences).
+For each issue, also identify:
+- **technologies**: Array of technologies/frameworks needed (e.g., ["React", "TypeScript", "CSS"])
+- **estimatedHours**: Rough estimate of hours needed (1-40)
+- **reasoning**: Brief explanation (1-2 sentences)
 
-Return JSON with "analyses" array containing objects with "issueNumber", "complexity", and "reasoning".`;
+Return JSON with "analyses" array containing objects with "issueNumber", "complexity", "reasoning", "technologies", and "estimatedHours".`;
 }
 
 export async function analyzeIssuesBatch(
@@ -92,6 +97,8 @@ export async function analyzeIssuesBatch(
       results.set(analysis.issueNumber, {
         complexity: analysis.complexity,
         reasoning: analysis.reasoning,
+        technologies: analysis.technologies,
+        estimatedHours: analysis.estimatedHours,
       });
     }
 

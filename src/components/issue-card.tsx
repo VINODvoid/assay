@@ -1,13 +1,16 @@
 "use client";
 
 import { ExternalLink, MessageSquare } from "lucide-react";
+import { BookmarkButton } from "./bookmark-button";
 import type { AnalyzedIssue } from "@/lib/types";
 
 interface IssueCardProps {
   issue: AnalyzedIssue;
+  repoOwner?: string;
+  repoName?: string;
 }
 
-export function IssueCard({ issue }: IssueCardProps) {
+export function IssueCard({ issue, repoOwner, repoName }: IssueCardProps) {
   return (
     <article className="issue-card group relative rounded-2xl transition-all duration-300">
       {/* Complexity indicator line */}
@@ -52,15 +55,47 @@ export function IssueCard({ issue }: IssueCardProps) {
               </a>
             </h3>
           </div>
-          <a
-            href={issue.html_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 rounded-xl p-2 text-muted-foreground/40 transition-all duration-200 hover:bg-surface hover:text-foreground"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </a>
+          <div className="flex items-center gap-1">
+            {repoOwner && repoName && (
+              <BookmarkButton issue={issue} repoOwner={repoOwner} repoName={repoName} />
+            )}
+            <a
+              href={issue.html_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-xl p-2 text-muted-foreground/40 transition-all duration-200 hover:bg-surface hover:text-foreground"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
         </div>
+
+        {/* Technologies & Time Estimate */}
+        {(issue.technologies && issue.technologies.length > 0) || issue.estimatedHours ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {issue.technologies && issue.technologies.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {issue.technologies.map((tech) => (
+                  <span
+                    key={tech}
+                    className="inline-flex items-center rounded-md bg-ring/10 px-2 py-0.5 text-xs font-medium text-ring"
+                  >
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            )}
+            {issue.estimatedHours && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-0.5 text-xs text-muted-foreground">
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                  <path strokeLinecap="round" strokeWidth="2" d="M12 6v6l4 2" />
+                </svg>
+                ~{issue.estimatedHours}h
+              </span>
+            )}
+          </div>
+        ) : null}
 
         {/* Reasoning */}
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
